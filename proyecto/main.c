@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <limits.h>
 
 // Dimensiones de la ventana
 float ANCHO = 1000;
@@ -10,7 +11,7 @@ float ALTO = 1000;
 // Angulo actual de la rotacion
 float rotation_angle = 0.0;
 
-// Bodalidades
+// Modalidades
 bool borde = true;
 bool texture = false;
 bool relleno = false;
@@ -50,6 +51,10 @@ typedef struct
    int color[3];
 } Poligono;
 
+/*
+ * Funcion de Comparacion entre dos valores convertidos a GFloat
+ * Se retorna un valor entero dependiendo de cual numero es mayor
+*/
 int compare(const void *a, const void *b)
 {
    GLfloat *x1 = (GLfloat *)a;
@@ -68,7 +73,10 @@ int compare(const void *a, const void *b)
    }
 }
 
-// Funcion para mapear a coordenadas de framebuffer
+/*
+ * Funcion para mapear a coordenadas de framebuffer
+ * Conversion de coordenadas universales a coordenadas de framebuffer
+ */
 void map_to_framebuffer(float universalesX, float universalesY, int width, int height, int *x_fb, int *y_fb)
 {
    // Regla de 3 para mapear a coordenadas de framebuffer
@@ -76,7 +84,10 @@ void map_to_framebuffer(float universalesX, float universalesY, int width, int h
    *y_fb = (int)((universalesY - yMin) / (yMax - yMin) * height); // para y
 }
 
-// Función para cargar los datos de un archivo de polígonos
+/*
+ * Funcion para cargar los datos de un archivo de polígonos
+ * Muestra mensaje de error si archivo no existe
+*/
 Poligono cargar_poligono(char *archivo)
 {
 
@@ -87,6 +98,7 @@ Poligono cargar_poligono(char *archivo)
       exit(1);
    }
 
+   // estructura de poligono
    Poligono poligono;
    poligono.num_vertices = 0;
 
@@ -121,7 +133,11 @@ Poligono cargar_poligono(char *archivo)
    return poligono;
 }
 
-// Funcion para cargar una imagen para la textura (.BMP)
+/*
+ * Carga una imagen que se utiliza como textura
+ * Utiliza archivos BMP, muestra error si no se encuentra archivo
+ * Recibe nombre de archivo 
+ */
 GLuint loadBMPTexture(const char *filename)
 {
    FILE *file = fopen(filename, "rb");
@@ -155,6 +171,11 @@ GLuint loadBMPTexture(const char *filename)
    return textureID;
 }
 
+/*
+ * Funcion de dibujo de lineas con Bresenham
+ * Creada desde tarea pasada
+ * Recibe coordenadas para el dibujo de un poligono
+ */
 void draw_line_bresenham(int x0, int y0, int x1, int y1, int color[3])
 {
    int dx = abs(x1 - x0);
@@ -165,6 +186,7 @@ void draw_line_bresenham(int x0, int y0, int x1, int y1, int color[3])
 
    while (1)
    {
+      // Funciones glut de dibujado
       glColor3ub(color[0], color[1], color[2]);
       glVertex2i(x0, y0);
 
@@ -185,9 +207,15 @@ void draw_line_bresenham(int x0, int y0, int x1, int y1, int color[3])
    }
 }
 
-// Algorimot scanline v2 para poligonos irregulares(Cóncavos)
+
+/*
+ * Algoritmo Scanline v2
+ * Utilizado con poligonos irregulares (concavos)
+ * 
+*/
 void scanlineFill(Poligono poligono)
 {
+   // Parametros de pantalla/algoritmo
    int minY = INT_MAX;
    int maxY = INT_MIN;
    int scanline;
@@ -198,7 +226,7 @@ void scanlineFill(Poligono poligono)
       glBindTexture(GL_TEXTURE_2D, textureID);
    }
    glColor3ub(poligono.color[0], poligono.color[1], poligono.color[2]); // por default el valor
-   // Encuentra los valores mínimos y máximos de y entre los vértices del polígono
+   // Encuentra los valores mínimos y máximos de Y entre los vértices del polígono
    for (int i = 0; i < poligono.num_vertices; i++)
    {
       if (poligono.vertices[i].y < minY)
@@ -276,7 +304,11 @@ void scanlineFill(Poligono poligono)
    glDisable(GL_TEXTURE_2D);
 }
 
-// Función para dibujar un polígono
+/* 
+ * Funcion para dibujar poligono
+ * Utiliza dibujado de Bresenham
+ * Recibe estructura generada de Poligono
+ */
 void dibujar_poligono(Poligono poligono, int color2[])
 {
    // Se guarda el color en el poligono
@@ -305,20 +337,27 @@ void dibujar_poligono(Poligono poligono, int color2[])
 }
 
 // zoom
+/**
+ * Operacion Zoom 
+ * Recibe una opcion de input de usuario para
+ * aumentar la imagen, reducirla o reiniciarla. 
+ * 
+*/
 void zoom(char opc, float factor)
 {
+   //operadores de glut
    glMatrixMode(GL_PROJECTION);
    glLoadIdentity();
 
    switch (opc)
    {
-   case '+':
+   case '+': // Zoom in 
       xMin2 += 5;
       xMax2 -= 5;
       yMin2 += 5;
       yMax2 -= 5;
       break;
-   case '-':
+   case '-': // Zoom out
       xMin2 -= 5;
       xMax2 += 5;
       yMin2 -= 5;
@@ -335,26 +374,30 @@ void zoom(char opc, float factor)
 }
 
 // Pan
-// la ventana establecida podra moverse hacia la izquierda,derecha, arriba o abajo.
+/**
+ * Operacion Pan
+ * Mueve la ventana establecida hacia izquierda, derecha, arriba o abajo
+ * Recibe input para ejecurtar cada opcion
+*/
 void pan(char opc, float y_offset)
 {
    glMatrixMode(GL_PROJECTION);
    glLoadIdentity();
    switch (opc)
    {
-   case 'w':
+   case 'w': // arriba 
       yMin2 += 5;
       yMax2 += 5;
       break;
-   case 's':
+   case 's': // abajo 
       yMin2 -= 5;
       yMax2 -= 5;
       break;
-   case 'd':
+   case 'd': // derecha 
       xMin2 += 5;
       xMax2 += 5;
       break;
-   case 'a':
+   case 'a': // izquierda
       xMin2 -= 5;
       xMax2 -= 5;
       break;
@@ -369,6 +412,10 @@ void pan(char opc, float y_offset)
 }
 
 // rotate
+/**
+ * Operador Rotacion 
+ * Recibe el angulo de rotacion establecido
+*/
 void rotate(float angle)
 {
    rotation_angle += angle; // incrementar el ángulo en cada iteración
@@ -379,6 +426,11 @@ void rotate(float angle)
    glMatrixMode(GL_MODELVIEW);
 }
 // Función para dibujar el mapa de Costa Rica
+/**
+ * Dibuja mapa de Costa Rica
+ * Utiliza .txt para el dibujo de poligonos
+ * Utiliza .bmp para texturas de poligonos 
+*/
 void dibujar_mapa()
 {
    // Color para cada provincia (RGB)
@@ -422,13 +474,23 @@ void dibujar_mapa()
 }
 
 // Función para dibujar la escena
+/**
+ * Dibuja la escena principal 
+ * Establece las funcionalidades necesarias de Glut
+ * Inicia ejecucion de dibujo del mapa 
+*/
 void display()
 {
-   glClear(GL_COLOR_BUFFER_BIT); // bora todo lo dibujado
+   glClear(GL_COLOR_BUFFER_BIT); // borra todo lo dibujado
    dibujar_mapa();
    glFlush();
 }
 
+/**
+ * Recibe Todo el input del teclado
+ * Ejecuta las respectivas funciones del programa asociadas a cada tecla
+ * Diferentes visualicaciones, zoom, pan, rotacion, 
+*/
 void keyboard(unsigned char key, int x, int y)
 {
    switch (key)
@@ -509,7 +571,9 @@ void keyboard(unsigned char key, int x, int y)
    glutPostRedisplay(); // actualiza la ventana
 }
 
-// Redibuja cada que se mueve la ventana
+/**
+ * Redibuja la ventana cada vez que se realiza un movimiento
+*/
 void reshape(int w, int h)
 {
    ANCHO = w; // width
@@ -525,12 +589,20 @@ void reshape(int w, int h)
    glMatrixMode(GL_MODELVIEW);
    glLoadIdentity();
 }
+/**
+ * Inicializa Glut 
+*/
 void initGL()
 {
    glClearColor(0, 0, 0, 1);
    gluOrtho2D(0, ANCHO, 0, ALTO);
 }
 
+/**
+ * Recibe input de la rueda del mouse
+ * utiliza funcion de zoom para modificar imagen 
+ * con relacion al movimiento de la rueda
+*/
 void mouseWheel(int btn, int state, int x, int y)
 {
    if (state == GLUT_DOWN)
@@ -551,6 +623,11 @@ void mouseWheel(int btn, int state, int x, int y)
    }
    glutPostRedisplay();
 }
+
+/**
+ * Funcion principal
+ * Inicializa componentes necesarios de Glut 
+*/
 int main(int argc, char **argv)
 {
    glutInit(&argc, argv);
